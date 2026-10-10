@@ -137,7 +137,6 @@ class AppConfig:
     snooze_minutes: int = DEFAULT_SNOOZE_MINUTES
     rest_minutes: int = DEFAULT_REST_MINUTES
     popup_auto_close_seconds: int = 0
-    start_minimized: bool = True
     autostart: bool = False
 
     # ---- 序列化 ----
@@ -150,7 +149,6 @@ class AppConfig:
             "snooze_minutes": self.snooze_minutes,
             "rest_minutes": self.rest_minutes,
             "popup_auto_close_seconds": self.popup_auto_close_seconds,
-            "start_minimized": self.start_minimized,
             "autostart": self.autostart,
         }
 
@@ -188,7 +186,6 @@ class AppConfig:
             popup_auto_close_seconds=_clamp_int(
                 data.get("popup_auto_close_seconds"), 0, 3600, 0
             ),
-            start_minimized=bool(data.get("start_minimized", True)),
             autostart=bool(data.get("autostart", False)),
         )
 

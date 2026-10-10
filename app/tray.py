@@ -34,8 +34,17 @@ class Tray(QSystemTrayIcon):
         self.setToolTip(__app_name__)
 
         menu = QMenu()
+        title_action = QAction(__app_name__, menu)
+        title_action.setEnabled(False)
+        title_action.setObjectName("MenuTitle")
+        menu.addAction(title_action)
 
-        show_action = QAction("显示主界面", menu)
+        self.status_action = QAction("状态：正在启动", menu)
+        self.status_action.setEnabled(False)
+        menu.addAction(self.status_action)
+        menu.addSeparator()
+
+        show_action = QAction("打开设置", menu)
         show_action.triggered.connect(self.showWindowRequested)
         menu.addAction(show_action)
 
@@ -43,6 +52,7 @@ class Tray(QSystemTrayIcon):
         self.pause_action.triggered.connect(self.pauseToggled)
         menu.addAction(self.pause_action)
 
+        menu.addSeparator()
         test_action = QAction("测试提醒", menu)
         test_action.triggered.connect(self.testRequested)
         menu.addAction(test_action)
@@ -68,6 +78,9 @@ class Tray(QSystemTrayIcon):
         if status in (Status.RUNNING, Status.SNOOZING, Status.RESTING):
             minutes = int(remaining_seconds) // 60
             seconds = int(remaining_seconds) % 60
-            self.setToolTip(f"{__app_name__} · {text} {minutes:02d}:{seconds:02d}")
+            countdown = f"{minutes:02d}:{seconds:02d}"
+            self.setToolTip(f"{__app_name__} · {text} {countdown}")
+            self.status_action.setText(f"状态：{text} · {countdown}")
         else:
             self.setToolTip(f"{__app_name__} · {text}")
+            self.status_action.setText(f"状态：{text}")

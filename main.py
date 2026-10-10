@@ -7,11 +7,10 @@ Windows 系统通知 + 置顶弹窗 + 提示音，常驻系统托盘。
 from __future__ import annotations
 
 import sys
-import tempfile
 from datetime import datetime
-from pathlib import Path
 
-from PySide6.QtCore import QLockFile, QObject, QTimer
+from PySide6.QtCore import QObject, QTimer
+from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMessageBox, QSystemTrayIcon
 
 from app import __app_name__
@@ -24,6 +23,8 @@ from app.style import APP_STYLE
 from app.tray import Tray
 
 TICK_INTERVAL_MS = 1000
+INSTANCE_SERVER_NAME = "SitReminder"
+MINIMIZED_ARGUMENT = "--minimized"
 
 
 class AppController(QObject):
@@ -120,14 +121,14 @@ class AppController(QObject):
         self.window.raise_()
         self.window.activateWindow()
 
-    def start(self) -> None:
+    def start(self, show_window: bool = True) -> None:
         self._apply_autostart(self.config.autostart)
         try:
             autostart.remove_legacy()
         except Exception:
             pass
         self.tray.show()
-        if not self.config.start_minimized:
+        if show_window:
             self._show_window()
 
     # ---------- 退出 ----------
@@ -138,14 +139,50 @@ class AppController(QObject):
         self._app.quit()
 
 
-def _acquire_single_instance() -> QLockFile | None:
-    """获取单实例锁，已被占用时返回 None。"""
-    lock_path = Path(tempfile.gettempdir()) / "sit-reminder.lock"
-    lock = QLockFile(str(lock_path))
-    lock.setStaleLockTime(0)
-    if not lock.tryLock(100):
+def _request_existing_instance() -> bool:
+    """尝试唤出已运行实例，连接成功返回 True。"""
+    socket = QLocalSocket()
+    socket.connectToServer(INSTANCE_SERVER_NAME)
+    if not socket.waitForConnected(250):
+        return False
+
+    socket.disconnectFromServer()
+    return True
+
+
+def _on_instance_connection(server: QLocalServer, controller: AppController) -> None:
+    while server.hasPendingConnections():
+        socket = server.nextPendingConnection()
+        if socket is None:
+            continue
+        controller._show_window()
+        socket.disconnectFromServer()
+        socket.deleteLater()
+
+
+def _start_instance_server(controller: AppController) -> QLocalServer | None:
+    """启动单实例 IPC 服务，已存在的实例会被请求显示。"""
+    if _request_existing_instance():
         return None
-    return lock
+
+    server = QLocalServer(controller)
+    server.newConnection.connect(
+        lambda: _on_instance_connection(server, controller)
+    )
+    if server.listen(INSTANCE_SERVER_NAME):
+        return server
+
+    # 处理并发启动：若另一进程刚刚完成 listen，就向它发送唤出请求。
+    if _request_existing_instance():
+        server.deleteLater()
+        return None
+
+    # 没有活跃实例时可能只剩陈旧的本地 socket 名称，清理后再试一次。
+    QLocalServer.removeServer(INSTANCE_SERVER_NAME)
+    if server.listen(INSTANCE_SERVER_NAME):
+        return server
+    server.deleteLater()
+    return None
 
 
 def main() -> int:
@@ -154,16 +191,20 @@ def main() -> int:
     app.setQuitOnLastWindowClosed(False)
     app.setStyleSheet(APP_STYLE)
 
-    lock = _acquire_single_instance()
-    if lock is None:
-        QMessageBox.information(None, __app_name__, "程序已经在运行了。")
+    if _request_existing_instance():
         return 0
 
     if not QSystemTrayIcon.isSystemTrayAvailable():
         QMessageBox.warning(None, __app_name__, "当前系统不支持系统托盘。")
 
     controller = AppController(app)
-    controller.start()
+    server = _start_instance_server(controller)
+    if server is None:
+        if not _request_existing_instance():
+            QMessageBox.warning(None, __app_name__, "无法启动程序，请稍后重试。")
+        return 0
+
+    controller.start(show_window=MINIMIZED_ARGUMENT not in sys.argv)
     return app.exec()
 
 

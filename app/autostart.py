@@ -26,17 +26,17 @@ def is_supported() -> bool:
 def launch_command() -> str:
     """返回用于自启动的命令行字符串。
 
-    - 打包运行：直接指向 exe。
-    - 源码运行：优先使用 pythonw.exe 避免弹出控制台窗口。
+    - 打包运行：直接指向 exe，并以最小化到托盘模式启动。
+    - 源码运行：优先使用 pythonw.exe，避免弹出控制台窗口。
     """
     if getattr(sys, "frozen", False):
-        return f'"{sys.executable}"'
+        return f'"{sys.executable}" --minimized'
 
     python = Path(sys.executable)
     pythonw = python.with_name("pythonw.exe")
     exe = pythonw if pythonw.exists() else python
     script = Path(__file__).resolve().parent.parent / "main.py"
-    return f'"{exe}" "{script}"'
+    return f'"{exe}" "{script}" --minimized'
 
 
 def is_enabled() -> bool:

@@ -52,33 +52,70 @@ def make_wav(path: Path) -> None:
 
 def _draw_icon(size: int) -> Image.Image:
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    pad = size * 0.06
-    # 圆角矩形背景
-    draw.rounded_rectangle(
-        [pad, pad, size - pad, size - pad],
-        radius=size * 0.22,
-        fill=(37, 99, 235, 255),
+    scale = 4
+    large_size = size * scale
+    shape = Image.new("L", (large_size, large_size), 0)
+    shape_draw = ImageDraw.Draw(shape)
+    pad = large_size * 0.055
+    radius = large_size * 0.25
+    shape_draw.rounded_rectangle(
+        [pad, pad, large_size - pad, large_size - pad],
+        radius=radius,
+        fill=255,
     )
-    # 表盘
-    cx = cy = size / 2
-    r = size * 0.30
+
+    # 深青绿到明亮青绿的背景渐变，配合清晰、简练的时钟轮廓。
+    gradient = Image.new("RGBA", (large_size, large_size), (0, 0, 0, 0))
+    pixels = gradient.load()
+    start = (15, 105, 91)
+    end = (39, 178, 133)
+    for y in range(large_size):
+        t = y / max(1, large_size - 1)
+        color = tuple(round(a + (b - a) * t) for a, b in zip(start, end))
+        for x in range(large_size):
+            pixels[x, y] = (*color, 255)
+    gradient.putalpha(shape)
+
+    detail = Image.new("RGBA", (large_size, large_size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(detail)
+    cx = cy = large_size / 2
+    radius = large_size * 0.305
+    white = (246, 255, 251, 255)
     draw.ellipse(
-        [cx - r, cy - r, cx + r, cy + r],
-        outline=(255, 255, 255, 255),
-        width=max(1, int(size * 0.045)),
+        [cx - radius, cy - radius, cx + radius, cy + radius],
+        outline=white,
+        width=max(5, int(large_size * 0.035)),
     )
-    # 指针
+
+    # 四个短刻度，避免小尺寸下细节拥挤。
+    tick_outer = radius * 0.82
+    tick_inner = radius * 0.68
+    tick_width = max(4, int(large_size * 0.027))
+    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
+        draw.line(
+            [
+                (cx + dx * tick_inner, cy + dy * tick_inner),
+                (cx + dx * tick_outer, cy + dy * tick_outer),
+            ],
+            fill=white,
+            width=tick_width,
+        )
+
     draw.line(
-        [cx, cy, cx, cy - r * 0.62],
-        fill=(255, 255, 255, 255),
-        width=max(1, int(size * 0.05)),
+        [(cx, cy), (cx, cy - radius * 0.49)],
+        fill=white,
+        width=max(6, int(large_size * 0.043)),
     )
     draw.line(
-        [cx, cy, cx + r * 0.5, cy],
-        fill=(255, 255, 255, 255),
-        width=max(1, int(size * 0.05)),
+        [(cx, cy), (cx + radius * 0.40, cy + radius * 0.22)],
+        fill=white,
+        width=max(6, int(large_size * 0.043)),
     )
+    hub = large_size * 0.045
+    draw.ellipse([cx - hub, cy - hub, cx + hub, cy + hub], fill=white)
+
+    gradient.alpha_composite(detail)
+    img = gradient.resize((size, size), Image.Resampling.LANCZOS)
     return img
 
 

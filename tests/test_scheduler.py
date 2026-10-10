@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, time
 import pytest
 
 from app.config import AppConfig, NotifySettings, Period
+from app.autostart import launch_command
 from app.scheduler import Event, SitTracker, Status
 
 DAY = datetime(2026, 1, 1)
@@ -169,6 +170,15 @@ def test_config_roundtrip():
 
 def test_config_defaults_rest():
     assert AppConfig().rest_minutes == 3
+
+
+def test_legacy_start_minimized_config_is_ignored():
+    config = AppConfig.from_dict({"start_minimized": True})
+    assert "start_minimized" not in config.to_dict()
+
+
+def test_autostart_launch_command_starts_minimized():
+    assert "--minimized" in launch_command()
 
 
 def test_config_clamps_and_fixes_invalid():
