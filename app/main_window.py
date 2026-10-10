@@ -48,23 +48,17 @@ STATUS_KIND = {
 
 
 class NoWheelSpinBox(QSpinBox):
-    """未聚焦时忽略滚轮，避免误改数值并让页面正常滚动。"""
+    """滚轮不改变数值，事件交给外层滚动区（页面正常滚动）。"""
 
     def wheelEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
-        if self.hasFocus():
-            super().wheelEvent(event)
-        else:
-            event.ignore()
+        event.ignore()
 
 
 class NoWheelTimeEdit(QTimeEdit):
-    """未聚焦时忽略滚轮，避免误改时间并让页面正常滚动。"""
+    """滚轮不改变时间，事件交给外层滚动区（页面正常滚动）。"""
 
     def wheelEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
-        if self.hasFocus():
-            super().wheelEvent(event)
-        else:
-            event.ignore()
+        event.ignore()
 
 
 def _time_edit(value: str) -> QTimeEdit:
