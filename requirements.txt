@@ -1,0 +1,6 @@
+PySide6>=6.6
+windows-toasts>=1.3
+
+# 打包与测试（开发用）
+pyinstaller>=6.0
+pytest>=8.0
