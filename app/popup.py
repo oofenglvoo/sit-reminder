@@ -34,6 +34,7 @@ class ReminderPopup(QWidget):
         super().__init__(parent)
         self._auto_close_seconds = auto_close_seconds
         self._auto_timer: QTimer | None = None
+        self._drag_offset = None
 
         self.setWindowTitle(__app_name__)
         self.setWindowFlags(
@@ -158,6 +159,26 @@ class ReminderPopup(QWidget):
         self.snoozed.emit()
         self.close()
 
+    def mousePressEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
+        if event.button() == Qt.LeftButton:
+            self._drag_offset = (
+                event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            )
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
+        if self._drag_offset is not None and event.buttons() & Qt.LeftButton:
+            self.move(event.globalPosition().toPoint() - self._drag_offset)
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
+        self._drag_offset = None
+        super().mouseReleaseEvent(event)
+
     def showEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
         super().showEvent(event)
         self.raise_()
@@ -175,6 +196,7 @@ class RestCountdownPopup(QWidget):
     def __init__(self, duration_seconds: int, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._remaining = max(0, int(duration_seconds))
+        self._drag_offset = None
         self._timer = QTimer(self)
         self._timer.setInterval(1000)
         self._timer.timeout.connect(self._tick)
@@ -301,6 +323,26 @@ class RestCountdownPopup(QWidget):
             geo.x() + (geo.width() - self.width()) // 2,
             geo.y() + (geo.height() - self.height()) // 3,
         )
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
+        if event.button() == Qt.LeftButton:
+            self._drag_offset = (
+                event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            )
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
+        if self._drag_offset is not None and event.buttons() & Qt.LeftButton:
+            self.move(event.globalPosition().toPoint() - self._drag_offset)
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
+        self._drag_offset = None
+        super().mouseReleaseEvent(event)
 
     def showEvent(self, event) -> None:  # noqa: N802 (Qt 命名)
         super().showEvent(event)
