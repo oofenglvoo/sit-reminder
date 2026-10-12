@@ -7,6 +7,7 @@ Windows 系统通知 + 置顶弹窗 + 提示音，常驻系统托盘。
 from __future__ import annotations
 
 import sys
+import math
 from datetime import datetime
 
 from PySide6.QtCore import QObject, QTimer
@@ -81,6 +82,12 @@ class AppController(QObject):
     # ---------- 提醒回调 ----------
     def _on_acknowledged(self) -> None:
         self.tracker.reset()
+        rest_seconds = min(
+            self.config.rest_seconds,
+            max(0, self.config.interval_seconds - 1),
+        )
+        remaining = math.ceil(self.tracker.remaining_seconds(datetime.now()))
+        self.notifier.show_rest_countdown(min(rest_seconds, remaining))
 
     def _on_snoozed(self) -> None:
         self.tracker.snooze(self.config.snooze_minutes * 60)

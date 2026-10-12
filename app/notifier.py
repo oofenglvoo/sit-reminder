@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QSystemTrayIcon
 
 from . import __app_name__
 from .config import AppConfig
-from .popup import ReminderPopup
+from .popup import ReminderPopup, RestCountdownPopup
 from .resources import sound_path
 
 TOAST_TITLE = "久坐提醒"
@@ -31,6 +31,7 @@ class Notifier(QObject):
         self._sound = None
         self._popup: ReminderPopup | None = None
         self._popup_affects = False
+        self._rest_popup: RestCountdownPopup | None = None
 
         self._init_toaster()
         self._init_sound()
@@ -78,6 +79,21 @@ class Notifier(QObject):
             config.popup_auto_close_seconds,
             affects_tracker=False,
         )
+
+    def show_rest_countdown(self, duration_seconds: int) -> None:
+        """显示休息倒计时；手动关闭弹窗不影响实际休息计时。"""
+        if duration_seconds <= 0:
+            return
+        if self._rest_popup is not None:
+            self._rest_popup.close()
+        popup = RestCountdownPopup(duration_seconds)
+        self._rest_popup = popup
+        popup.destroyed.connect(
+            lambda _obj=None, closing_popup=popup: self._on_rest_popup_destroyed(
+                closing_popup
+            )
+        )
+        popup.show()
 
     # ---------- 内部实现 ----------
     def _send_toast(self, title: str, body: str) -> None:
@@ -140,3 +156,7 @@ class Notifier(QObject):
     def _on_popup_destroyed(self) -> None:
         self._popup = None
         self._popup_affects = False
+
+    def _on_rest_popup_destroyed(self, popup: RestCountdownPopup) -> None:
+        if self._rest_popup is popup:
+            self._rest_popup = None
